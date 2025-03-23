@@ -20,6 +20,11 @@ import ClientList from "@/pages/clients/ClientList";
 import ClientForm from "@/pages/clients/ClientForm";
 import NotFound from "@/pages/NotFound";
 import UserManagement from "@/pages/admin/UserManagement";
+import CasesPage from "@/pages/cases/CasesPage";
+import CaseDetail from "@/pages/cases/CaseDetail";
+import CaseForm from "@/pages/cases/CaseForm";
+import Settings from "@/pages/settings/Settings";
+import PaymentsPage from "@/pages/payments/PaymentsPage";
 
 // Protected route component
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -75,6 +80,42 @@ const App = () => (
                   } 
                 />
                 
+                {/* Case routes - accessible by admins */}
+                <Route 
+                  path="/cases" 
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <CasesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cases/new" 
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <CaseForm />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/cases/:caseId" 
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <CaseDetail />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Payment routes - accessible by accountants */}
+                <Route 
+                  path="/payments" 
+                  element={
+                    <ProtectedRoute allowedRoles={["accountant"]}>
+                      <PaymentsPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
                 {/* Admin routes */}
                 <Route 
                   path="/admin/users" 
@@ -83,6 +124,12 @@ const App = () => (
                       <UserManagement />
                     </ProtectedRoute>
                   } 
+                />
+                
+                {/* Settings - accessible by all users */}
+                <Route 
+                  path="/settings" 
+                  element={<Settings />} 
                 />
                 
                 {/* 404 route */}

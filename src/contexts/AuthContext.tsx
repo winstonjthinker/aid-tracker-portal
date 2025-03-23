@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
@@ -35,8 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast: toastNotification } = useToast();
 
   const isUsingMockSupabase = () => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    return !supabaseUrl || supabaseUrl === 'https://placeholder-url.supabase.co';
+    return supabase.getClientOptions().url === 'https://placeholder-url.supabase.co';
   };
 
   useEffect(() => {
