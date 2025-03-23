@@ -1,4 +1,5 @@
 
+import React from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -23,69 +24,79 @@ import UserManagement from "@/pages/admin/UserManagement";
 // Protected route component
 import ProtectedRoute from "@/components/ProtectedRoute";
 
-const queryClient = new QueryClient();
+// Create a new QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Redirect root to dashboard or signin */}
-            <Route path="/" element={<Navigate to="/signin" replace />} />
-            
-            {/* Auth routes */}
-            <Route element={<AuthLayout />}>
-              <Route path="/signin" element={<SignIn />} />
-            </Route>
-            
-            {/* Protected app routes */}
-            <Route element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }>
-              <Route path="/dashboard" element={<Dashboard />} />
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Redirect root to dashboard or signin */}
+              <Route path="/" element={<Navigate to="/signin" replace />} />
               
-              {/* Client routes - accessible by agents and admins */}
-              <Route 
-                path="/clients" 
-                element={
-                  <ProtectedRoute allowedRoles={["agent", "admin"]}>
-                    <ClientList />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/clients/new" 
-                element={
-                  <ProtectedRoute allowedRoles={["agent", "admin"]}>
-                    <ClientForm />
-                  </ProtectedRoute>
-                } 
-              />
+              {/* Auth routes */}
+              <Route element={<AuthLayout />}>
+                <Route path="/signin" element={<SignIn />} />
+              </Route>
               
-              {/* Admin routes */}
-              <Route 
-                path="/admin/users" 
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <UserManagement />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* 404 route */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-        
-        <Toaster />
-        <Sonner />
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+              {/* Protected app routes */}
+              <Route element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }>
+                <Route path="/dashboard" element={<Dashboard />} />
+                
+                {/* Client routes - accessible by agents and admins */}
+                <Route 
+                  path="/clients" 
+                  element={
+                    <ProtectedRoute allowedRoles={["agent", "admin"]}>
+                      <ClientList />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/clients/new" 
+                  element={
+                    <ProtectedRoute allowedRoles={["agent", "admin"]}>
+                      <ClientForm />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Admin routes */}
+                <Route 
+                  path="/admin/users" 
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <UserManagement />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* 404 route */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+          
+          <Toaster />
+          <Sonner />
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </React.StrictMode>
 );
 
 export default App;

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 export default function SignIn() {
   const [email, setEmail] = useState("winston@gmail.com");
@@ -33,7 +34,7 @@ export default function SignIn() {
       navigate(from, { replace: true });
     } catch (error) {
       console.error("Sign in error:", error);
-      // Error is already handled in the auth context
+      toast.error("Failed to sign in. Please check your credentials.");
     } finally {
       setIsSubmitting(false);
     }
@@ -66,12 +67,9 @@ export default function SignIn() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
-              <Link
-                to="/forgot-password"
-                className="text-xs text-primary hover:underline"
-              >
+              <span className="text-xs text-primary hover:underline cursor-not-allowed opacity-70">
                 Forgot password?
-              </Link>
+              </span>
             </div>
             <Input
               id="password"
@@ -105,6 +103,3 @@ export default function SignIn() {
     </div>
   );
 }
-
-// Add missing import
-import { Link } from "react-router-dom";
