@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,8 @@ import { Loader } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("winston@gmail.com");
+  const [password, setPassword] = useState("monalisah1996");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
@@ -42,9 +42,9 @@ export default function SignIn() {
   return (
     <div className="px-8 py-12 sm:px-12">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Legal Aid CRM</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to access your account
+          Sign in to access the system
         </p>
       </div>
       
@@ -96,13 +96,15 @@ export default function SignIn() {
           )}
         </Button>
         
-        <div className="text-center text-sm">
-          Don't have an account?{" "}
-          <Link to="/signup" className="text-primary hover:underline">
-            Sign up
-          </Link>
+        <div className="text-center text-sm text-muted-foreground">
+          This is an in-house platform for Legal Aid management.
+          <br />
+          Contact your administrator for access.
         </div>
       </form>
     </div>
   );
 }
+
+// Add missing import
+import { Link } from "react-router-dom";

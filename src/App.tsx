@@ -12,13 +12,13 @@ import AuthLayout from "@/components/layout/AuthLayout";
 
 // Auth pages
 import SignIn from "@/pages/auth/SignIn";
-import SignUp from "@/pages/auth/SignUp";
 
 // App pages
 import Dashboard from "@/pages/dashboard/Dashboard";
 import ClientList from "@/pages/clients/ClientList";
 import ClientForm from "@/pages/clients/ClientForm";
 import NotFound from "@/pages/NotFound";
+import UserManagement from "@/pages/admin/UserManagement";
 
 // Protected route component
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -32,12 +32,11 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Redirect root to dashboard or signin */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/signin" replace />} />
             
             {/* Auth routes */}
             <Route element={<AuthLayout />}>
               <Route path="/signin" element={<SignIn />} />
-              <Route path="/signup" element={<SignUp />} />
             </Route>
             
             {/* Protected app routes */}
@@ -62,6 +61,16 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={["agent", "admin"]}>
                     <ClientForm />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Admin routes */}
+              <Route 
+                path="/admin/users" 
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <UserManagement />
                   </ProtectedRoute>
                 } 
               />
