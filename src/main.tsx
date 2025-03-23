@@ -4,8 +4,17 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// Mount the application with React.StrictMode to catch potential issues
-createRoot(document.getElementById("root")!).render(
+// Get the root element
+const rootElement = document.getElementById("root");
+
+// Ensure the root element exists
+if (!rootElement) {
+  throw new Error("Could not find root element");
+}
+
+// Create a root and render the app
+const root = createRoot(rootElement);
+root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>

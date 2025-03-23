@@ -1,8 +1,6 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
-import { useToast } from '@/hooks/use-toast';
 import { toast } from 'sonner';
 
 type UserProfile = {
@@ -33,10 +31,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast: toastNotification } = useToast();
 
   const isUsingMockSupabase = () => {
-    return supabase.getClientOptions().url === 'https://placeholder-url.supabase.co';
+    return supabase.supabaseUrl === 'https://placeholder-url.supabase.co';
   };
 
   useEffect(() => {
@@ -129,16 +126,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
-        toastNotification({
-          title: "Authentication failed",
+        toast.error("Authentication failed", {
           description: error.message,
-          variant: "destructive",
         });
         throw error;
       }
       
-      toastNotification({
-        title: "Welcome back!",
+      toast.success("Welcome back!", {
         description: "You've successfully signed in.",
       });
     } catch (error) {
@@ -179,10 +173,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
-        toastNotification({
-          title: "Account creation failed",
+        toast.error("Account creation failed", {
           description: error.message,
-          variant: "destructive",
         });
         throw error;
       }
@@ -198,8 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         ]);
         
-        toastNotification({
-          title: "Account created",
+        toast.success("Account created", {
           description: `${firstName} ${lastName} (${role}) has been added.`,
         });
       }
@@ -226,16 +217,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       await supabase.auth.signOut();
-      toastNotification({
-        title: "Signed out",
+      toast.success("Signed out", {
         description: "You've been successfully signed out.",
       });
     } catch (error) {
       console.error('Error signing out:', error);
-      toastNotification({
-        title: "Error signing out",
+      toast.error("Error signing out", {
         description: "An error occurred while signing out.",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
