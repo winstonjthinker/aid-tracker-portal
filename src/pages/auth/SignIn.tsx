@@ -29,11 +29,15 @@ export default function SignIn() {
     
     try {
       setIsSubmitting(true);
+      console.log("Attempting to sign in with:", email);
       await signIn(email, password);
+      console.log("Sign in successful, navigating to:", from);
       navigate(from, { replace: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign in error:", error);
-      toast.error("Failed to sign in. Please check your credentials.");
+      toast.error("Failed to sign in", {
+        description: error?.message || "Please check your credentials and try again."
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -23,9 +23,6 @@ type AuthContextType = {
   signOut: () => Promise<void>;
 };
 
-const DEFAULT_ADMIN_EMAIL = 'winstonjthinkersavens@gmail.com';
-const DEFAULT_ADMIN_PASSWORD = 'winston28monalisah1997';
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -214,14 +211,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       console.log('Admin creating user account:', email, role);
       
-      const { data, error } = await supabase.auth.admin.createUser({
+      // First create the user with the signUp method instead of admin.createUser
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: {
-          first_name: firstName,
-          last_name: lastName,
-          role: role
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            role: role
+          }
         }
       });
       
