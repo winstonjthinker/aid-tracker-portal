@@ -1,5 +1,6 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, isUsingMockSupabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -17,6 +18,7 @@ type AuthContextType = {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, role: 'agent' | 'admin' | 'accountant') => Promise<void>;
   createUserAccount: (email: string, password: string, firstName: string, lastName: string, role: 'agent' | 'admin' | 'accountant') => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -31,10 +33,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const isUsingMockSupabase = () => {
-    return supabase.supabaseUrl === 'https://placeholder-url.supabase.co';
-  };
 
   useEffect(() => {
     const setupAuth = async () => {
@@ -110,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(mockUser);
           setProfile(mockProfile);
           
-          toast.success("Welcome back, Winston!", {
+          toast.success("Welcome to Equal Access!", {
             description: "You've successfully signed in.",
           });
           
@@ -132,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      toast.success("Welcome back!", {
+      toast.success("Welcome to Equal Access!", {
         description: "You've successfully signed in.",
       });
     } catch (error) {
@@ -143,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const createUserAccount = async (
+  const signUp = async (
     email: string, 
     password: string, 
     firstName: string, 
@@ -155,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (isUsingMockSupabase()) {
         toast.success("Account created successfully", {
-          description: `${firstName} ${lastName} (${role}) has been added.`,
+          description: `Welcome to Equal Access, ${firstName}!`,
         });
         return;
       }
@@ -191,7 +189,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ]);
         
         toast.success("Account created", {
-          description: `${firstName} ${lastName} (${role}) has been added.`,
+          description: `Welcome to Equal Access, ${firstName}!`,
+        });
+      }
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createUserAccount = async (
+    email: string, 
+    password: string, 
+    firstName: string, 
+    lastName: string, 
+    role: 'agent' | 'admin' | 'accountant'
+  ) => {
+    try {
+      setLoading(true);
+      
+      if (isUsingMockSupabase()) {
+        toast.success("Account created successfully", {
+          description: `${firstName} ${lastName} (${role}) has been added to Equal Access.`,
+        });
+        return;
+      }
+      
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            role: role
+          }
+        }
+      });
+      
+      if (error) {
+        toast.error("Account creation failed", {
+          description: error.message,
+        });
+        throw error;
+      }
+      
+      if (data.user) {
+        await supabase.from('profiles').insert([
+          {
+            id: data.user.id,
+            email: email,
+            role: role,
+            first_name: firstName,
+            last_name: lastName,
+          }
+        ]);
+        
+        toast.success("Account created", {
+          description: `${firstName} ${lastName} (${role}) has been added to Equal Access.`,
         });
       }
     } catch (error) {
@@ -211,14 +268,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setSession(null);
         toast.success("Signed out", {
-          description: "You've been successfully signed out.",
+          description: "You've been successfully signed out of Equal Access.",
         });
         return;
       }
       
       await supabase.auth.signOut();
       toast.success("Signed out", {
-        description: "You've been successfully signed out.",
+        description: "You've been successfully signed out of Equal Access.",
       });
     } catch (error) {
       console.error('Error signing out:', error);
@@ -238,6 +295,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         loading,
         signIn,
+        signUp,
         createUserAccount,
         signOut,
       }}

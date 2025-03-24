@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
-import { Link } from "react-router-dom";
 
 export default function SignIn() {
   const [email, setEmail] = useState("winston@gmail.com");
@@ -43,9 +42,9 @@ export default function SignIn() {
   return (
     <div className="px-8 py-12 sm:px-12">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Legal Aid CRM</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Equal Access</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to access the system
+          Sign in to access the legal aid management system
         </p>
       </div>
       
