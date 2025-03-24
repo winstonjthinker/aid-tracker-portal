@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -29,6 +28,7 @@ export interface Database {
           agent_id: string | null
           date_joined: string
           form_number: string | null
+          policy_number: string | null
         }
         Insert: {
           id?: string
@@ -48,6 +48,7 @@ export interface Database {
           agent_id?: string | null
           date_joined?: string
           form_number?: string | null
+          policy_number?: string | null
         }
         Update: {
           id?: string
@@ -67,6 +68,7 @@ export interface Database {
           agent_id?: string | null
           date_joined?: string
           form_number?: string | null
+          policy_number?: string | null
         }
       }
       employers: {
@@ -306,7 +308,7 @@ export interface Database {
       title: "mr" | "mrs" | "miss" | "ms" | "dr" | "prof"
       plan_type: "individual" | "family"
       coverage_tier: "bronze" | "silver" | "gold" | "platinum"
-      payment_frequency: "quarterly" | "half-yearly" | "annually"
+      payment_frequency: "monthly" | "quarterly" | "half-yearly" | "annually"
       payment_method: "cash" | "ecocash" | "telecash" | "one-wallet" | "debit-order" | "stop-order"
     }
   }

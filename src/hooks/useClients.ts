@@ -1,6 +1,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase, isUsingMockSupabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,7 +23,8 @@ const MOCK_CLIENTS = [
     case_status: 'open',
     agent_id: 'admin-user-id',
     date_joined: '2023-01-15',
-    form_number: 'F12345'
+    form_number: 'F12345',
+    policy_number: 'POL-12345'
   },
   {
     id: 'c2',
@@ -42,7 +43,8 @@ const MOCK_CLIENTS = [
     case_status: 'pending',
     agent_id: 'admin-user-id',
     date_joined: '2023-02-20',
-    form_number: 'F67890'
+    form_number: 'F67890',
+    policy_number: 'POL-67890'
   }
 ];
 
@@ -65,9 +67,15 @@ export type Client = {
   agent_id: string | null;
   date_joined: string;
   form_number: string | null;
+  policy_number: string | null;
 };
 
 export type ClientFormData = Omit<Client, 'id' | 'created_at' | 'case_status'>;
+
+// Helper function to check if we're using mock data
+const isUsingMockSupabase = () => {
+  return false; // Now using real Supabase instance
+};
 
 // Hook for fetching clients
 export const useClients = (agentId?: string) => {
@@ -94,7 +102,7 @@ export const useClients = (agentId?: string) => {
         throw error;
       }
       
-      return data;
+      return data || [];
     }
   });
 };
@@ -114,12 +122,16 @@ export const useClient = (clientId: string) => {
         .from('clients')
         .select('*')
         .eq('id', clientId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('Error fetching client:', error);
         toast.error('Failed to load client details');
         throw error;
+      }
+      
+      if (!data) {
+        throw new Error('Client not found');
       }
       
       return data;

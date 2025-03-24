@@ -1,7 +1,5 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useCreateClient } from "@/hooks/useClients";
 
 type Dependant = {
   id: string;
@@ -41,6 +40,7 @@ export default function ClientForm() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const currentDate = new Date();
+  const createClient = useCreateClient();
   
   // Form sections
   const [activeSection, setActiveSection] = useState<string>("personal");
@@ -58,6 +58,7 @@ export default function ClientForm() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [formNumber, setFormNumber] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
   
   // Employer details
   const [employerName, setEmployerName] = useState("");
@@ -98,7 +99,6 @@ export default function ClientForm() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   
   // Form state
-  const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Calculate subscription amount based on plan and tier
@@ -246,67 +246,55 @@ export default function ClientForm() {
     }
     
     try {
-      setSubmitting(true);
-      
       // Format dates for database
       const formattedDateOfBirth = dateOfBirth ? format(dateOfBirth, 'yyyy-MM-dd') : '';
       const formattedNokDateOfBirth = nokDateOfBirth ? format(nokDateOfBirth, 'yyyy-MM-dd') : '';
       const formattedPayDate = payDate ? format(payDate, 'yyyy-MM-dd') : '';
       const dateJoined = format(currentDate, 'yyyy-MM-dd');
       
-      // Handle mock database operations if using placeholder Supabase
-      const isMockSupabase = supabase.supabaseUrl === 'https://placeholder-url.supabase.co';
+      // Create client using the mutation hook
+      const clientData = {
+        title,
+        surname,
+        first_name: firstName,
+        whatsapp_number: whatsappNumber,
+        sex,
+        date_of_birth: formattedDateOfBirth,
+        id_number: idNumber,
+        address,
+        marital_status: maritalStatus,
+        phone,
+        email,
+        agent_id: profile?.id || null,
+        date_joined: dateJoined,
+        form_number: formNumber || null,
+        policy_number: policyNumber || null
+      };
       
-      if (isMockSupabase) {
-        toast.success("Client registered successfully (Demo Mode)");
-        navigate("/clients");
-        return;
-      }
-      
-      // Create client
-      const { data: clientData, error: clientError } = await supabase
-        .from("clients")
-        .insert([
-          {
-            title,
-            surname,
-            first_name: firstName,
-            whatsapp_number: whatsappNumber,
-            sex,
-            date_of_birth: formattedDateOfBirth,
-            id_number: idNumber,
-            address,
-            marital_status: maritalStatus,
-            phone,
-            email,
-            case_status: "pending",
-            agent_id: profile?.id,
-            date_joined: dateJoined,
-            form_number: formNumber || null
-          }
-        ])
-        .select()
-        .single();
-      
-      if (clientError) throw clientError;
-      
-      const clientId = clientData.id;
+      const result = await createClient.mutateAsync(clientData);
+      const clientId = result.id;
       
       // Create employer record
-      await supabase.from("employers").insert([
+      const { error: employerError } = await supabase.from("employers").insert([
         {
           client_id: clientId,
           name: employerName,
           employee_number: employeeNumber,
           occupation,
           address: employerAddress,
-          email: employerEmail,
-          phone: employerPhone
+          email: employerEmail || null,
+          phone: employerPhone || null
         }
       ]);
       
+      if (employerError) {
+        console.error("Error creating employer:", employerError);
+        toast.error("Error saving employer details");
+        return;
+      }
+      
       // Create next of kin
-      await supabase.from("next_of_kin").insert([
+      const { error: nokError } = await supabase.from("next_of_kin").insert([
         {
           client_id: clientId,
           full_name: nokFullName,
@@ -318,10 +306,16 @@ export default function ClientForm() {
         }
       ]);
       
+      if (nokError) {
+        console.error("Error creating next of kin:", nokError);
+        toast.error("Error saving next of kin details");
+        return;
+      }
+      
       // Create dependants (only if they have names)
       const validDependants = dependants.filter(dep => dep.surname.trim() !== "" && dep.firstName.trim() !== "");
       if (validDependants.length > 0) {
-        await supabase.from("dependants").insert(
+        const { error: dependantsError } = await supabase.from("dependants").insert(
           validDependants.map(dep => ({
             client_id: clientId,
             surname: dep.surname,
@@ -330,10 +324,16 @@ export default function ClientForm() {
             date_of_birth: dep.dateOfBirth ? format(dep.dateOfBirth, 'yyyy-MM-dd') : ''
           }))
         );
+        
+        if (dependantsError) {
+          console.error("Error creating dependants:", dependantsError);
+          toast.error("Error saving dependant details");
+          return;
+        }
       }
       
       // Create subscription record
-      await supabase.from("subscriptions").insert([
+      const { error: subscriptionError } = await supabase.from("subscriptions").insert([
         {
           client_id: clientId,
           plan_type: planType,
@@ -349,13 +349,17 @@ export default function ClientForm() {
         }
       ]);
       
+      if (subscriptionError) {
+        console.error("Error creating subscription:", subscriptionError);
+        toast.error("Error saving subscription details");
+        return;
+      }
+      
       toast.success("Client registered successfully");
       navigate("/clients");
     } catch (error) {
       console.error("Error registering client:", error);
       toast.error("Failed to register client");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -383,6 +387,19 @@ export default function ClientForm() {
             </AccordionTrigger>
             <AccordionContent className="pt-4">
               <div className="grid gap-4 md:grid-cols-2">
+                {/* Policy Number - NEW FIELD */}
+                <div className="space-y-2">
+                  <Label htmlFor="policyNumber">
+                    Policy Number
+                  </Label>
+                  <Input
+                    id="policyNumber"
+                    value={policyNumber}
+                    onChange={(e) => setPolicyNumber(e.target.value)}
+                    placeholder="e.g. POL-12345"
+                  />
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="title">
                     Title <span className="text-destructive">*</span>
@@ -880,420 +897,4 @@ export default function ClientForm() {
                           errors[`dep_${index}_firstName`] ? "border-destructive" : ""
                         }
                       />
-                      {errors[`dep_${index}_firstName`] && (
-                        <p className="text-xs text-destructive">
-                          {errors[`dep_${index}_firstName`]}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor={`dep_${dep.id}_idNumber`}>ID Number</Label>
-                      <Input
-                        id={`dep_${dep.id}_idNumber`}
-                        value={dep.idNumber}
-                        onChange={(e) => 
-                          handleDependantChange(dep.id, "idNumber", e.target.value)
-                        }
-                        className={
-                          errors[`dep_${index}_idNumber`] ? "border-destructive" : ""
-                        }
-                      />
-                      {errors[`dep_${index}_idNumber`] && (
-                        <p className="text-xs text-destructive">
-                          {errors[`dep_${index}_idNumber`]}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor={`dep_${dep.id}_dateOfBirth`}>Date of Birth</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !dep.dateOfBirth && "text-muted-foreground",
-                              errors[`dep_${index}_dateOfBirth`] && "border-destructive"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dep.dateOfBirth ? format(dep.dateOfBirth, "PPP") : "Select date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dep.dateOfBirth}
-                            onSelect={(date) => 
-                              handleDependantChange(dep.id, "dateOfBirth", date)
-                            }
-                            initialFocus
-                            disabled={(date) => date > new Date()}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {errors[`dep_${index}_dateOfBirth`] && (
-                        <p className="text-xs text-destructive">
-                          {errors[`dep_${index}_dateOfBirth`]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {dependants.length < 5 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-2"
-                  onClick={handleAddDependant}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Another Dependant
-                </Button>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-          
-          {/* Subscription Details */}
-          <AccordionItem value="subscription" className="card-glass rounded-lg px-4">
-            <AccordionTrigger className="text-lg font-medium">
-              Plan & Cover Selection
-            </AccordionTrigger>
-            <AccordionContent className="pt-4">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Choose Plan <span className="text-destructive">*</span></Label>
-                  <RadioGroup 
-                    value={planType} 
-                    onValueChange={(value) => {
-                      setPlanType(value as "individual" | "family");
-                      updateSubscriptionAmount();
-                    }}
-                    className="flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="individual" id="individual" />
-                      <Label htmlFor="individual">Individual</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="family" id="family" />
-                      <Label htmlFor="family">Family</Label>
-                    </div>
-                  </RadioGroup>
-                  {errors.planType && (
-                    <p className="text-xs text-destructive">{errors.planType}</p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="coverageTier">
-                    Premium Cover Tier <span className="text-destructive">*</span>
-                  </Label>
-                  <Select 
-                    value={coverageTier} 
-                    onValueChange={(value) => {
-                      setCoverageTier(value);
-                      updateSubscriptionAmount();
-                    }}
-                  >
-                    <SelectTrigger 
-                      id="coverageTier" 
-                      className={errors.coverageTier ? "border-destructive" : ""}
-                    >
-                      <SelectValue placeholder="Select coverage tier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bronze">Bronze – US$1000</SelectItem>
-                      <SelectItem value="silver">Silver – US$2000</SelectItem>
-                      <SelectItem value="gold">Gold – US$3000</SelectItem>
-                      <SelectItem value="platinum">Platinum – US$4000</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.coverageTier && (
-                    <p className="text-xs text-destructive">{errors.coverageTier}</p>
-                  )}
-                </div>
-                
-                <div className="rounded-md bg-muted/50 p-4">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">Monthly Subscription Amount:</h3>
-                    <p className="font-semibold text-primary">${monthlyAmount.toFixed(2)}</p>
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <p>Individual Plan: Bronze $5 / Silver $12 / Gold $16 / Platinum $20</p>
-                    <p>Family Plan: Bronze $10 / Silver $20 / Gold $25 / Platinum $30</p>
-                  </div>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-          
-          {/* Payment Details */}
-          <AccordionItem value="payment" className="card-glass rounded-lg px-4">
-            <AccordionTrigger className="text-lg font-medium">
-              Payment Method & Frequency
-            </AccordionTrigger>
-            <AccordionContent className="pt-4">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">
-                    Mode of Payment <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
-                  >
-                    <SelectTrigger 
-                      id="paymentMethod"
-                      className={errors.paymentMethod ? "border-destructive" : ""}
-                    >
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="ecocash">Ecocash</SelectItem>
-                      <SelectItem value="telecash">Telecash</SelectItem>
-                      <SelectItem value="one-wallet">One-Wallet</SelectItem>
-                      <SelectItem value="debit-order">Debit Order</SelectItem>
-                      <SelectItem value="stop-order">Stop Order</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.paymentMethod && (
-                    <p className="text-xs text-destructive">{errors.paymentMethod}</p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="paymentFrequency">
-                    Payment Frequency <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={paymentFrequency}
-                    onValueChange={setPaymentFrequency}
-                  >
-                    <SelectTrigger 
-                      id="paymentFrequency"
-                      className={errors.paymentFrequency ? "border-destructive" : ""}
-                    >
-                      <SelectValue placeholder="Select payment frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="half-yearly">Half-Yearly</SelectItem>
-                      <SelectItem value="annually">Annually</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.paymentFrequency && (
-                    <p className="text-xs text-destructive">{errors.paymentFrequency}</p>
-                  )}
-                </div>
-                
-                {['debit-order', 'stop-order'].includes(paymentMethod) && (
-                  <div className="mt-4 rounded-lg border border-muted p-4">
-                    <h3 className="mb-4 font-medium">Banking Details</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="bankName">
-                          Bank Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="bankName"
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          className={errors.bankName ? "border-destructive" : ""}
-                        />
-                        {errors.bankName && (
-                          <p className="text-xs text-destructive">{errors.bankName}</p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="bankBranch">
-                          Branch
-                        </Label>
-                        <Input
-                          id="bankBranch"
-                          value={bankBranch}
-                          onChange={(e) => setBankBranch(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="accountNumber">
-                          Account Number <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="accountNumber"
-                          value={accountNumber}
-                          onChange={(e) => setAccountNumber(e.target.value)}
-                          className={errors.accountNumber ? "border-destructive" : ""}
-                        />
-                        {errors.accountNumber && (
-                          <p className="text-xs text-destructive">{errors.accountNumber}</p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="accountHolder">
-                          Account Holder's Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="accountHolder"
-                          value={accountHolder}
-                          onChange={(e) => setAccountHolder(e.target.value)}
-                          className={errors.accountHolder ? "border-destructive" : ""}
-                        />
-                        {errors.accountHolder && (
-                          <p className="text-xs text-destructive">{errors.accountHolder}</p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="payDate">
-                          Pay Date <span className="text-destructive">*</span>
-                        </Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !payDate && "text-muted-foreground",
-                                errors.payDate && "border-destructive"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {payDate ? format(payDate, "PPP") : "Select date"}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={payDate}
-                              onSelect={setPayDate}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        {errors.payDate && (
-                          <p className="text-xs text-destructive">{errors.payDate}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-          
-          {/* Declaration */}
-          <AccordionItem value="declaration" className="card-glass rounded-lg px-4">
-            <AccordionTrigger className="text-lg font-medium">
-              Declaration
-            </AccordionTrigger>
-            <AccordionContent className="pt-4">
-              <div className="space-y-4">
-                <div className="rounded-lg bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    I hereby declare that the information provided in this form is true and complete to the best of my knowledge. 
-                    I understand that any false statements or misrepresentation of facts may result in the cancellation of my 
-                    membership and legal aid benefits. I also agree to the terms and conditions of the Legal Aid scheme.
-                  </p>
-                </div>
-                
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="acceptTerms"
-                    checked={acceptTerms}
-                    onCheckedChange={(checked) => 
-                      setAcceptTerms(checked as boolean)
-                    }
-                    className={errors.acceptTerms ? "border-destructive" : ""}
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <Label
-                      htmlFor="acceptTerms"
-                      className={
-                        errors.acceptTerms ? "text-destructive" : ""
-                      }
-                    >
-                      I accept the above declaration
-                    </Label>
-                    {errors.acceptTerms && (
-                      <p className="text-xs text-destructive">
-                        {errors.acceptTerms}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="mt-4 grid gap-2 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Client's Signature</Label>
-                    <div className="h-16 rounded-md border border-input bg-muted/20"></div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Date</Label>
-                    <Input value={format(currentDate, "PPP")} disabled />
-                  </div>
-                </div>
-                
-                <div className="mt-6 rounded-md border-t border-dashed border-muted pt-4">
-                  <h3 className="mb-2 text-sm font-medium">For Office Use Only</h3>
-                  <div className="grid gap-2 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Document Verified By</Label>
-                      <Input disabled />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Signature</Label>
-                      <div className="h-10 rounded-md border border-input bg-muted/20"></div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Date</Label>
-                      <Input disabled />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Policy Number</Label>
-                      <Input disabled />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-        
-        <div className="flex justify-end space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/clients")}
-            disabled={submitting}
-          >
-            Cancel
-          </Button>
-          
-          <Button type="submit" disabled={submitting}>
-            {submitting ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Registering...
-              </>
-            ) : (
-              "Register Client"
-            )}
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-}
+                      {errors[`dep_${index}_firstName

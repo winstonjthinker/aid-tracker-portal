@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -23,64 +22,38 @@ import {
   ChevronDown, 
   ChevronUp, 
   Loader, 
-  Plus, 
-  Search, 
-  UserPlus 
+  UserPlus, 
+  Search 
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-
-type Client = {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  case_status: string;
-  created_at: string;
-};
+import { useClients, Client } from "@/hooks/useClients";
+import { toast } from "sonner";
 
 export default function ClientList() {
-  const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<keyof Client>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const { profile } = useAuth();
-
+  
+  // Use the hook to fetch clients
+  const { data: clients, isLoading, error } = useClients(
+    profile?.role === "agent" ? profile.id : undefined
+  );
+  
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        setLoading(true);
-        let query = supabase.from("clients").select("*");
-        
-        // Filter by the agent's ID if the user is an agent
-        if (profile?.role === "agent") {
-          query = query.eq("agent_id", profile.id);
-        }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        if (data) {
-          setClients(data);
-          setFilteredClients(data);
-        }
-      } catch (error) {
-        console.error("Error fetching clients:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchClients();
-  }, [profile]);
+    if (error) {
+      console.error("Error fetching clients:", error);
+      toast.error("Failed to load clients. Please try again.");
+    }
+  }, [error]);
 
   useEffect(() => {
     // Apply filters and sorting
+    if (!clients) return;
+    
     let result = [...clients];
     
     // Apply status filter
@@ -93,10 +66,11 @@ export default function ClientList() {
       const query = searchQuery.toLowerCase();
       result = result.filter(
         client =>
-          client.first_name.toLowerCase().includes(query) ||
-          client.last_name.toLowerCase().includes(query) ||
-          client.email.toLowerCase().includes(query) ||
-          client.phone.includes(query)
+          client.first_name?.toLowerCase().includes(query) ||
+          client.surname?.toLowerCase().includes(query) ||
+          client.email?.toLowerCase().includes(query) ||
+          client.phone?.includes(query) ||
+          client.policy_number?.toLowerCase().includes(query)
       );
     }
     
@@ -200,10 +174,18 @@ export default function ClientList() {
             <TableRow>
               <TableHead
                 className="cursor-pointer hover:text-primary"
-                onClick={() => handleSort("last_name")}
+                onClick={() => handleSort("surname")}
               >
                 <div className="flex items-center">
-                  Name {renderSortIcon("last_name")}
+                  Name {renderSortIcon("surname")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:text-primary"
+                onClick={() => handleSort("policy_number")}
+              >
+                <div className="flex items-center">
+                  Policy Number {renderSortIcon("policy_number")}
                 </div>
               </TableHead>
               <TableHead
@@ -242,18 +224,24 @@ export default function ClientList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <div className="flex items-center justify-center">
                     <Loader className="h-6 w-6 animate-spin text-primary" />
                     <span className="ml-2">Loading clients...</span>
                   </div>
                 </TableCell>
               </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                  Error loading clients. Please try again.
+                </TableCell>
+              </TableRow>
             ) : filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No clients found.
                 </TableCell>
               </TableRow>
@@ -261,10 +249,11 @@ export default function ClientList() {
               filteredClients.map((client) => (
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">
-                    {client.first_name} {client.last_name}
+                    {client.first_name} {client.surname}
                   </TableCell>
-                  <TableCell>{client.email}</TableCell>
-                  <TableCell>{client.phone}</TableCell>
+                  <TableCell>{client.policy_number || "—"}</TableCell>
+                  <TableCell>{client.email || "—"}</TableCell>
+                  <TableCell>{client.phone || "—"}</TableCell>
                   <TableCell>{getStatusBadge(client.case_status)}</TableCell>
                   <TableCell>
                     {new Date(client.created_at).toLocaleDateString()}

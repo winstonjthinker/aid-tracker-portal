@@ -1,24 +1,16 @@
 
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
-// Get environment variables with fallbacks to prevent runtime errors
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
-
-// Create a single supabase client for interacting with your database
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Export the client
+export const supabase = supabaseClient;
 
 // Helper function to check if we're using placeholder/mock values
 export const isUsingMockSupabase = () => {
-  return supabaseUrl === 'https://placeholder-url.supabase.co';
+  return false; // We're now using a real Supabase instance
 };
 
 // Log status for debugging
-console.log(
-  'Supabase client initialized with URL:',
-  isUsingMockSupabase() ? 'PLACEHOLDER (connect to Supabase)' : 'CUSTOM URL'
-);
+console.log('Supabase client initialized and connected to:', supabase.supabaseUrl);
 
 // Add a mock auth setup for development when Supabase is not connected
 if (isUsingMockSupabase()) {
