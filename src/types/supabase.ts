@@ -1,3 +1,4 @@
+
 export type Json =
   | string
   | number
@@ -276,6 +277,8 @@ export interface Database {
           role: string
           first_name: string
           last_name: string
+          created_at?: string
+          updated_at?: string
         }
         Insert: {
           id: string
@@ -283,6 +286,8 @@ export interface Database {
           role?: string
           first_name: string
           last_name: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -290,6 +295,60 @@ export interface Database {
           role?: string
           first_name?: string
           last_name?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      case_notes: {
+        Row: {
+          id: string
+          case_id: string
+          author_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          author_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          author_id?: string
+          content?: string
+          created_at?: string
+        }
+      }
+      case_documents: {
+        Row: {
+          id: string
+          case_id: string
+          uploaded_by: string
+          file_path: string
+          file_name: string
+          file_type: string
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          uploaded_by: string
+          file_path: string
+          file_name: string
+          file_type: string
+          uploaded_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          uploaded_by?: string
+          file_path?: string
+          file_name?: string
+          file_type?: string
+          uploaded_at?: string
         }
       }
     }

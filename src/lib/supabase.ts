@@ -10,7 +10,7 @@ export const isUsingMockSupabase = () => {
 };
 
 // Log status for debugging
-console.log('Supabase client initialized: connected to', supabase.supabaseUrl);
+console.log('Supabase client initialized: connected to Supabase');
 
 // Test the connection by making a simple request
 (async () => {
