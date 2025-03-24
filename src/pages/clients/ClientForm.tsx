@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCreateClient } from "@/hooks/useClients";
+import { supabase } from "@/lib/supabase";
 
 type Dependant = {
   id: string;
@@ -897,4 +899,356 @@ export default function ClientForm() {
                           errors[`dep_${index}_firstName`] ? "border-destructive" : ""
                         }
                       />
-                      {errors[`dep_${index}_firstName
+                      {errors[`dep_${index}_firstName`] && (
+                        <p className="text-xs text-destructive">
+                          {errors[`dep_${index}_firstName`]}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`dep_${dep.id}_idNumber`}>ID Number</Label>
+                      <Input
+                        id={`dep_${dep.id}_idNumber`}
+                        value={dep.idNumber}
+                        onChange={(e) => 
+                          handleDependantChange(dep.id, "idNumber", e.target.value)
+                        }
+                        className={
+                          errors[`dep_${index}_idNumber`] ? "border-destructive" : ""
+                        }
+                      />
+                      {errors[`dep_${index}_idNumber`] && (
+                        <p className="text-xs text-destructive">
+                          {errors[`dep_${index}_idNumber`]}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`dep_${dep.id}_dateOfBirth`}>Date of Birth</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id={`dep_${dep.id}_dateOfBirth`}
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !dep.dateOfBirth && "text-muted-foreground",
+                              errors[`dep_${index}_dateOfBirth`] && "border-destructive"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dep.dateOfBirth ? format(dep.dateOfBirth, "PPP") : "Select date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dep.dateOfBirth}
+                            onSelect={(date) => 
+                              handleDependantChange(dep.id, "dateOfBirth", date)
+                            }
+                            initialFocus
+                            disabled={(date) => date > new Date()}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {errors[`dep_${index}_dateOfBirth`] && (
+                        <p className="text-xs text-destructive">
+                          {errors[`dep_${index}_dateOfBirth`]}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddDependant}
+                className="w-full"
+                disabled={dependants.length >= 5}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Another Dependant
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
+          
+          {/* Subscription Details */}
+          <AccordionItem value="subscription" className="card-glass rounded-lg px-4">
+            <AccordionTrigger className="text-lg font-medium">
+              Subscription Details
+            </AccordionTrigger>
+            <AccordionContent className="pt-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="planType">
+                    Plan Type <span className="text-destructive">*</span>
+                  </Label>
+                  <RadioGroup 
+                    value={planType} 
+                    onValueChange={(value) => {
+                      setPlanType(value as "individual" | "family");
+                      updateSubscriptionAmount();
+                    }}
+                    className="flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="individual" id="individual" />
+                      <Label htmlFor="individual">Individual</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="family" id="family" />
+                      <Label htmlFor="family">Family</Label>
+                    </div>
+                  </RadioGroup>
+                  {errors.planType && (
+                    <p className="text-xs text-destructive">{errors.planType}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="coverageTier">
+                    Coverage Tier <span className="text-destructive">*</span>
+                  </Label>
+                  <Select 
+                    value={coverageTier} 
+                    onValueChange={(value) => {
+                      setCoverageTier(value);
+                      updateSubscriptionAmount();
+                    }}
+                  >
+                    <SelectTrigger id="coverageTier" className={errors.coverageTier ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bronze">Bronze</SelectItem>
+                      <SelectItem value="silver">Silver</SelectItem>
+                      <SelectItem value="gold">Gold</SelectItem>
+                      <SelectItem value="platinum">Platinum</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.coverageTier && (
+                    <p className="text-xs text-destructive">{errors.coverageTier}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyAmount">
+                    Monthly Amount (USD)
+                  </Label>
+                  <Input
+                    id="monthlyAmount"
+                    value={monthlyAmount.toString()}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="paymentMethod">
+                    Payment Method <span className="text-destructive">*</span>
+                  </Label>
+                  <Select 
+                    value={paymentMethod} 
+                    onValueChange={setPaymentMethod}
+                  >
+                    <SelectTrigger id="paymentMethod" className={errors.paymentMethod ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="debit-order">Debit Order</SelectItem>
+                      <SelectItem value="stop-order">Stop Order</SelectItem>
+                      <SelectItem value="ecocash">EcoCash</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.paymentMethod && (
+                    <p className="text-xs text-destructive">{errors.paymentMethod}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="paymentFrequency">
+                    Payment Frequency <span className="text-destructive">*</span>
+                  </Label>
+                  <Select 
+                    value={paymentFrequency} 
+                    onValueChange={setPaymentFrequency}
+                  >
+                    <SelectTrigger id="paymentFrequency" className={errors.paymentFrequency ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="biannually">Bi-annually</SelectItem>
+                      <SelectItem value="annually">Annually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.paymentFrequency && (
+                    <p className="text-xs text-destructive">{errors.paymentFrequency}</p>
+                  )}
+                </div>
+              </div>
+              
+              {['debit-order', 'stop-order'].includes(paymentMethod) && (
+                <div className="mt-6 rounded-md border p-4">
+                  <h3 className="mb-4 font-medium">Banking Details</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="bankName">
+                        Bank Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="bankName"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        className={errors.bankName ? "border-destructive" : ""}
+                      />
+                      {errors.bankName && (
+                        <p className="text-xs text-destructive">{errors.bankName}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="bankBranch">
+                        Branch Name
+                      </Label>
+                      <Input
+                        id="bankBranch"
+                        value={bankBranch}
+                        onChange={(e) => setBankBranch(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="accountNumber">
+                        Account Number <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="accountNumber"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        className={errors.accountNumber ? "border-destructive" : ""}
+                      />
+                      {errors.accountNumber && (
+                        <p className="text-xs text-destructive">{errors.accountNumber}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="accountHolder">
+                        Account Holder Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="accountHolder"
+                        value={accountHolder}
+                        onChange={(e) => setAccountHolder(e.target.value)}
+                        className={errors.accountHolder ? "border-destructive" : ""}
+                      />
+                      {errors.accountHolder && (
+                        <p className="text-xs text-destructive">{errors.accountHolder}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="payDate">
+                        Pay Date <span className="text-destructive">*</span>
+                      </Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !payDate && "text-muted-foreground",
+                              errors.payDate && "border-destructive"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {payDate ? format(payDate, "PPP") : "Select date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={payDate}
+                            onSelect={setPayDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {errors.payDate && (
+                        <p className="text-xs text-destructive">{errors.payDate}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+          
+          {/* Declaration */}
+          <AccordionItem value="declaration" className="card-glass rounded-lg px-4">
+            <AccordionTrigger className="text-lg font-medium">
+              Declaration
+            </AccordionTrigger>
+            <AccordionContent className="pt-4">
+              <div className="rounded-md border p-4">
+                <p className="mb-4 text-sm">
+                  I hereby declare that all information provided is true and correct to the best of my knowledge. 
+                  I understand that providing false information may result in rejection of my application or termination of services.
+                </p>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="acceptTerms" 
+                    checked={acceptTerms}
+                    onCheckedChange={(checked) => 
+                      setAcceptTerms(checked as boolean)
+                    }
+                  />
+                  <Label htmlFor="acceptTerms" className="text-sm font-medium">
+                    I accept the terms and conditions <span className="text-destructive">*</span>
+                  </Label>
+                </div>
+                
+                {errors.acceptTerms && (
+                  <p className="mt-2 text-xs text-destructive">{errors.acceptTerms}</p>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+        
+        <div className="mt-6 flex items-center justify-end space-x-4">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={() => navigate("/clients")}
+          >
+            Cancel
+          </Button>
+          
+          <Button 
+            type="submit"
+            disabled={createClient.isPending}
+          >
+            {createClient.isPending ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Registering...
+              </>
+            ) : (
+              "Register Client"
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
