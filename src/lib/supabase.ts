@@ -10,9 +10,18 @@ export const isUsingMockSupabase = () => {
 };
 
 // Log status for debugging
-console.log('Supabase client initialized and connected to:', supabase.supabaseUrl);
+console.log('Supabase client initialized: connected to', supabase.supabaseUrl);
 
-// Add a mock auth setup for development when Supabase is not connected
-if (isUsingMockSupabase()) {
-  console.log('Using mock auth setup with default admin credentials');
+try {
+  // Test the connection by making a simple request
+  (async () => {
+    const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+    if (error) {
+      console.error('⚠️ Supabase connection test failed:', error.message);
+    } else {
+      console.log('✅ Supabase connection test successful!');
+    }
+  })();
+} catch (err) {
+  console.error('Critical error testing Supabase connection:', err);
 }

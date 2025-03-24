@@ -9,8 +9,8 @@ import { Loader } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SignIn() {
-  const [email, setEmail] = useState("winston@gmail.com");
-  const [password, setPassword] = useState("monalisah1996");
+  const [email, setEmail] = useState("winstonjthinkersavens@gmail.com");
+  const [password, setPassword] = useState("winston28monalisah1997");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();

@@ -54,6 +54,8 @@ export default function UserManagement() {
   const onSubmit = async (values: UserFormValues) => {
     try {
       setIsSubmitting(true);
+      console.log('Creating new user account:', values.email, values.role);
+      
       await createUserAccount(
         values.email,
         values.password,
@@ -61,10 +63,20 @@ export default function UserManagement() {
         values.lastName,
         values.role as "agent" | "admin" | "accountant"
       );
+      
+      console.log('User account created successfully');
       form.reset();
       setIsOpen(false);
-    } catch (error) {
+      
+      // Refresh the users list if we had one
+      toast.success("Account created successfully", {
+        description: `${values.firstName} ${values.lastName} has been added as a ${values.role}.`
+      });
+    } catch (error: any) {
       console.error("Error creating user:", error);
+      toast.error("Failed to create user account", {
+        description: error.message || "Please try again or contact support."
+      });
     } finally {
       setIsSubmitting(false);
     }

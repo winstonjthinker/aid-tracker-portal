@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase, isUsingMockSupabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
@@ -23,8 +23,8 @@ type AuthContextType = {
   signOut: () => Promise<void>;
 };
 
-const DEFAULT_ADMIN_EMAIL = 'winston@gmail.com';
-const DEFAULT_ADMIN_PASSWORD = 'monalisah1996';
+const DEFAULT_ADMIN_EMAIL = 'winstonjthinkersavens@gmail.com';
+const DEFAULT_ADMIN_PASSWORD = 'winston28monalisah1997';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -36,50 +36,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const setupAuth = async () => {
-      if (isUsingMockSupabase()) {
-        console.log('Using mock auth setup with default admin credentials');
-        setLoading(false);
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+      try {
+        console.log('Setting up auth and checking session...');
         
-        setProfile(profile);
-      }
-
-      setLoading(false);
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
+        // First set up the auth state listener BEFORE checking for existing session
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (_event, session) => {
+            console.log('Auth state changed, event:', _event);
+            setSession(session);
+            setUser(session?.user ?? null);
             
-            setProfile(profile);
+            if (session?.user) {
+              console.log('Fetching profile for user:', session.user.id);
+              try {
+                const { data: profile, error } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .single();
+                
+                if (error) {
+                  console.error('Error fetching profile:', error);
+                } else {
+                  console.log('Profile fetched successfully:', profile);
+                  setProfile(profile);
+                }
+              } catch (err) {
+                console.error('Exception in profile fetch:', err);
+              }
+            } else {
+              setProfile(null);
+            }
+          }
+        );
+
+        // THEN check for existing session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          console.log('Session exists, fetching profile for user:', session.user.id);
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching profile on init:', error);
           } else {
-            setProfile(null);
+            console.log('Profile fetched successfully on init:', profile);
+            setProfile(profile);
           }
         }
-      );
 
-      return () => {
-        subscription.unsubscribe();
-      };
+        setLoading(false);
+
+        return () => {
+          console.log('Cleaning up auth subscription');
+          subscription.unsubscribe();
+        };
+      } catch (err) {
+        console.error('Critical error in auth setup:', err);
+        setLoading(false);
+      }
     };
 
     setupAuth();
@@ -88,48 +113,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-
-      if (isUsingMockSupabase()) {
-        if (email === DEFAULT_ADMIN_EMAIL && password === DEFAULT_ADMIN_PASSWORD) {
-          const mockUser = {
-            id: 'admin-user-id',
-            email: DEFAULT_ADMIN_EMAIL,
-            // Other user properties would go here
-          } as User;
-          
-          const mockProfile = {
-            id: 'admin-user-id',
-            email: DEFAULT_ADMIN_EMAIL,
-            role: 'admin' as const,
-            first_name: 'Winston',
-            last_name: 'Admin'
-          };
-          
-          setUser(mockUser);
-          setProfile(mockProfile);
-          
-          toast.success("Welcome to Equal Access!", {
-            description: "You've successfully signed in.",
-          });
-          
-          return;
-        } else {
-          toast.error("Invalid credentials", {
-            description: "Please check your email and password.",
-          });
-          throw new Error('Invalid credentials');
-        }
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('Attempting sign in for:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
       
       if (error) {
+        console.error('Authentication failed:', error.message);
         toast.error("Authentication failed", {
           description: error.message,
         });
         throw error;
       }
       
+      console.log('Sign in successful:', data);
       toast.success("Welcome to Equal Access!", {
         description: "You've successfully signed in.",
       });
@@ -150,13 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ) => {
     try {
       setLoading(true);
-      
-      if (isUsingMockSupabase()) {
-        toast.success("Account created successfully", {
-          description: `Welcome to Equal Access, ${firstName}!`,
-        });
-        return;
-      }
+      console.log('Creating new user account:', email, role);
       
       const { data, error } = await supabase.auth.signUp({ 
         email, 
@@ -171,6 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
+        console.error('Account creation failed:', error.message);
         toast.error("Account creation failed", {
           description: error.message,
         });
@@ -178,7 +172,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        await supabase.from('profiles').insert([
+        console.log('User created, now creating profile:', data.user.id);
+        const { error: profileError } = await supabase.from('profiles').insert([
           {
             id: data.user.id,
             email: email,
@@ -188,9 +183,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         ]);
         
-        toast.success("Account created", {
-          description: `Welcome to Equal Access, ${firstName}!`,
-        });
+        if (profileError) {
+          console.error('Profile creation failed:', profileError);
+          toast.error("Profile creation failed", {
+            description: profileError.message,
+          });
+        } else {
+          console.log('Profile created successfully');
+          toast.success("Account created", {
+            description: `Welcome to Equal Access, ${firstName}!`,
+          });
+        }
       }
     } catch (error) {
       console.error('Error signing up:', error);
@@ -209,27 +212,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ) => {
     try {
       setLoading(true);
+      console.log('Admin creating user account:', email, role);
       
-      if (isUsingMockSupabase()) {
-        toast.success("Account created successfully", {
-          description: `${firstName} ${lastName} (${role}) has been added to Equal Access.`,
-        });
-        return;
-      }
-      
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
         password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            role: role
-          }
+        email_confirm: true,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+          role: role
         }
       });
       
       if (error) {
+        console.error('Account creation failed:', error.message);
         toast.error("Account creation failed", {
           description: error.message,
         });
@@ -237,7 +234,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        await supabase.from('profiles').insert([
+        console.log('User created by admin, now creating profile:', data.user.id);
+        const { error: profileError } = await supabase.from('profiles').insert([
           {
             id: data.user.id,
             email: email,
@@ -247,9 +245,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         ]);
         
-        toast.success("Account created", {
-          description: `${firstName} ${lastName} (${role}) has been added to Equal Access.`,
-        });
+        if (profileError) {
+          console.error('Profile creation failed:', profileError);
+          toast.error("Profile creation failed", {
+            description: profileError.message,
+          });
+        } else {
+          console.log('User account created successfully by admin');
+          toast.success("Account created", {
+            description: `${firstName} ${lastName} (${role}) has been added to Equal Access.`,
+          });
+        }
       }
     } catch (error) {
       console.error('Error creating account:', error);
@@ -262,25 +268,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       setLoading(true);
+      console.log('Signing out user');
       
-      if (isUsingMockSupabase()) {
-        setUser(null);
-        setProfile(null);
-        setSession(null);
-        toast.success("Signed out", {
-          description: "You've been successfully signed out of Equal Access.",
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Error signing out:', error);
+        toast.error("Error signing out", {
+          description: "An error occurred while signing out: " + error.message,
         });
-        return;
+        throw error;
       }
       
-      await supabase.auth.signOut();
+      console.log('Sign out successful');
       toast.success("Signed out", {
         description: "You've been successfully signed out of Equal Access.",
       });
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Exception during sign out:', error);
       toast.error("Error signing out", {
-        description: "An error occurred while signing out.",
+        description: "An unexpected error occurred while signing out.",
       });
     } finally {
       setLoading(false);
