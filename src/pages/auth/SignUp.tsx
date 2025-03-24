@@ -38,7 +38,8 @@ export default function SignUp() {
     
     try {
       setIsSubmitting(true);
-      await signUp(email, password, firstName, lastName);
+      // Fix: Pass 'agent' as the default role (5th argument)
+      await signUp(email, password, firstName, lastName, 'agent');
       toast.success("Account created successfully");
       navigate("/dashboard");
     } catch (error) {

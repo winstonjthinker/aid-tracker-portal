@@ -211,7 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       console.log('Admin creating user account:', email, role);
       
-      // First create the user with the signUp method instead of admin.createUser
+      // Use the signUp method instead of directly creating admin users
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

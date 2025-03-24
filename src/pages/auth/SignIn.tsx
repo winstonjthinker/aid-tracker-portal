@@ -9,6 +9,7 @@ import { Loader } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SignIn() {
+  // Update to use the correct email format to match what's in the database
   const [email, setEmail] = useState("winstonjthinkersavens@gmail.com");
   const [password, setPassword] = useState("winston28monalisah1997");
   const [isSubmitting, setIsSubmitting] = useState(false);
